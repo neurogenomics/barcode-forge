@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 
 from barcode_forge import __version__
-from barcode_forge.config import DISABLEABLE, Config, load_toml
+from barcode_forge.config import DISABLEABLE, Config, from_layers, load_toml
 from barcode_forge.design.pipeline import run
 from barcode_forge.report.stats import compute
 from barcode_forge.report.writer import write_sets, write_stats
@@ -31,11 +31,10 @@ def main(
 
 
 def _build_config(config_file: Path | None, disable: list[str], **flags: object) -> Config:
-    """Defaults < config file < command-line flags."""
-    file_values = load_toml(config_file) if config_file else {}
+    """Defaults < config file < command-line flags; disabled rules from both."""
+    file_values = dict(load_toml(config_file)) if config_file else {}
     disabled = [*file_values.pop("disable", ()), *disable]
-    cfg = Config().with_overrides(**file_values).with_overrides(**flags)
-    return cfg.without(*disabled)
+    return from_layers(file_values, flags, disable=disabled)
 
 
 @app.command()
@@ -66,6 +65,17 @@ def generate(
         list[str] | None,
         typer.Option(help=f"Rule to switch off (repeatable): {', '.join(DISABLEABLE)}."),
     ] = None,
+    chemistry: Annotated[
+        str | None,
+        typer.Option(help="Channel checks: 2colour | 4colour | none [default: 2colour]."),
+    ] = None,
+    revcomp: Annotated[
+        bool | None,
+        typer.Option(
+            "--revcomp/--no-revcomp",
+            help="Also keep reverse complements >= d apart (non-directional libraries).",
+        ),
+    ] = None,
     seed: Annotated[int | None, typer.Option(help="Random seed [default: random].")] = None,
     max_candidates: Annotated[
         int | None, typer.Option(help="Rule-passing candidates to screen.")
@@ -94,6 +104,8 @@ def generate(
             avoid_motifs=tuple(avoid) if avoid else None,
             flank5=flank5,
             flank3=flank3,
+            chemistry=chemistry,
+            check_revcomp=revcomp,
             seed=seed,
             max_candidates=max_candidates,
             balance=balance,

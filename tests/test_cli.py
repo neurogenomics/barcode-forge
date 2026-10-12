@@ -95,3 +95,23 @@ def test_bad_input_exits_nonzero_with_message(tmp_path, args):
     assert result.exit_code != 0
     assert "Error" in result.output
     assert "Traceback" not in result.output
+
+
+def test_long_barcodes_work_when_primer3_rules_are_disabled(tmp_path):
+    args = ["generate", "-n", "1", "-s", "3", "-l", "70", "-d", "10", "--seed", "1"]
+    disable = ["--disable", "hairpin", "--disable", "homodimer"]
+    result = _invoke(*args, *disable, "--max-candidates", "200", "-o", tmp_path)
+    assert result.exit_code == 0, result.output
+    assert all(len(b) == 70 for s in _read_sets(tmp_path) for b in s)
+
+
+def test_chemistry_option(tmp_path):
+    result = _invoke(*SMALL, "--chemistry", "none", "-o", tmp_path)
+    assert result.exit_code == 0, result.output
+    assert "chemistry = None" in (tmp_path / "stats.txt").read_text()
+
+
+def test_revcomp_option_is_recorded(tmp_path):
+    result = _invoke(*SMALL, "--revcomp", "-o", tmp_path)
+    assert result.exit_code == 0, result.output
+    assert "check_revcomp = True" in (tmp_path / "stats.txt").read_text()
