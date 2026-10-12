@@ -12,8 +12,14 @@ from random import Random, SystemRandom
 from barcode_forge.config import Config
 from barcode_forge.design import candidates, partition, pool, search
 from barcode_forge.design.balance import balance
+from barcode_forge.design.channels import channel_violations
+from barcode_forge.design.repair import repair
 from barcode_forge.distance import get_metric
 from barcode_forge.rules import ruleset, thermo
+
+
+class ChannelBalanceError(ValueError):
+    """A set lacks signal in an imaging channel at some position."""
 
 
 @dataclass(frozen=True)
@@ -37,6 +43,24 @@ def _resolve_tm(cfg: Config, screened: list[str]) -> Config:
     return dataclasses.replace(cfg, tm_target=thermo.estimate_tm_target(screened, cfg))
 
 
+def _reserved(cfg: Config) -> tuple[str, ...]:
+    """Phantom barcodes the design must keep >= d away from."""
+    # Failed or empty clusters read as poly-G (dark) on 2-colour instruments.
+    return ("G" * cfg.length,) if cfg.chemistry == "2colour" else ()
+
+
+def _check_channels(sets: list[list[str]], cfg: Config) -> None:
+    for i, group in enumerate(sets, 1):
+        problems = channel_violations(group, cfg.chemistry)
+        if problems:
+            raise ChannelBalanceError(
+                f"set {i} is not {cfg.chemistry} channel-balanced ({'; '.join(problems[:3])}) "
+                "even after swapping in unused candidates; use more barcodes per set, "
+                "more sets to balance across, more candidates, a smaller min distance, "
+                "or --chemistry none if the barcodes are not read in early cycles"
+            )
+
+
 def run(cfg: Config) -> Design:
     if cfg.seed is None:
         cfg = dataclasses.replace(cfg, seed=SystemRandom().randrange(2**32))
@@ -51,14 +75,21 @@ def run(cfg: Config) -> Design:
     rejections = pre.rejections + tm_only.rejections
 
     metric = get_metric(cfg.metric)
+    constraints = {"reserved": _reserved(cfg), "revcomp": cfg.check_revcomp}
     if cfg.min_distance is None:
-        d, chosen = search.maximise(passed, cfg.total, metric, cfg.length)
+        d, chosen = search.maximise(passed, cfg.total, metric, cfg.length, **constraints)
     else:
-        d, chosen = cfg.min_distance, pool.greedy(passed, cfg.total, cfg.min_distance, metric)
+        d = cfg.min_distance
+        chosen = pool.greedy(passed, cfg.total, d, metric, **constraints)
 
     sets = partition.partition(chosen, cfg.n_sets, cfg.set_size, rng)
     if cfg.balance:
         sets = balance(sets, rng)
+    if cfg.chemistry is not None:
+        taken = set(chosen)
+        spares = [s for s in passed if s not in taken]
+        sets = repair(sets, spares, cfg, metric, d, rng, **constraints)
+    _check_channels(sets, cfg)
     return Design(
         sets=sets,
         min_distance=d,

@@ -100,6 +100,9 @@ def test_bad_input_exits_nonzero_with_message(tmp_path, args):
 def test_long_barcodes_work_when_primer3_rules_are_disabled(tmp_path):
     args = ["generate", "-n", "1", "-s", "3", "-l", "70", "-d", "10", "--seed", "1"]
     disable = ["--disable", "hairpin", "--disable", "homodimer"]
+    # Three 70-mers cannot light both channels at all 70 positions, and ~50 spares
+    # cannot repair that; this test is about primer3 limits, not channel balance.
+    disable += ["--chemistry", "none"]
     result = _invoke(*args, *disable, "--max-candidates", "200", "-o", tmp_path)
     assert result.exit_code == 0, result.output
     assert all(len(b) == 70 for s in _read_sets(tmp_path) for b in s)
