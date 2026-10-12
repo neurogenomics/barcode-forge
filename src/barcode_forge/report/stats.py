@@ -8,7 +8,8 @@ from statistics import fmean
 from rapidfuzz import process
 
 from barcode_forge.composition import imbalance, positional_composition
-from barcode_forge.config import Config
+from barcode_forge.config import PRIMER3_MAX_LENGTH, Config
+from barcode_forge.design.channels import channel_violations
 from barcode_forge.distance import Metric, get_metric
 from barcode_forge.rules.homopolymer import longest_homopolymer
 from barcode_forge.rules.palindrome import longest_palindrome
@@ -36,10 +37,11 @@ class Stats:
     max_homopolymer: int
     max_dinucleotide_repeat: int
     max_palindrome: int
-    worst_hairpin_dg: float
-    worst_homodimer_dg: float
+    worst_hairpin_dg: float | None  # None above primer3's 60 nt alignment limit
+    worst_homodimer_dg: float | None
     composition: list[list[dict[str, float]]]  # per set, per position, per base
     imbalance: list[float]  # per set
+    channel_violations: list[list[str]]  # per set, under cfg.chemistry
     rejections: dict[str, int]
     candidates_screened: int
     seed: int
@@ -84,6 +86,7 @@ def compute(
     seqs = [s for group in sets for s in group]
     gcs = [gc_fraction(s) for s in seqs]
     tms = [tm(s, cfg) for s in seqs]
+    aligns = len(seqs[0]) <= PRIMER3_MAX_LENGTH
     return Stats(
         min_distance=min_distance,
         metric=cfg.metric,
@@ -102,10 +105,11 @@ def compute(
         max_homopolymer=max(map(longest_homopolymer, seqs)),
         max_dinucleotide_repeat=max(map(longest_dinucleotide_repeat, seqs)),
         max_palindrome=max(map(longest_palindrome, seqs)),
-        worst_hairpin_dg=min(hairpin_dg(s, cfg) for s in seqs),
-        worst_homodimer_dg=min(homodimer_dg(s, cfg) for s in seqs),
+        worst_hairpin_dg=min(hairpin_dg(s, cfg) for s in seqs) if aligns else None,
+        worst_homodimer_dg=min(homodimer_dg(s, cfg) for s in seqs) if aligns else None,
         composition=[positional_composition(g) for g in sets],
         imbalance=[imbalance(g) for g in sets],
+        channel_violations=[channel_violations(g, cfg.chemistry) for g in sets],
         rejections=dict(sorted(rejections.items())),
         candidates_screened=candidates_screened,
         seed=seed,

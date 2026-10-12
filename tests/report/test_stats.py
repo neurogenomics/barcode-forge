@@ -94,3 +94,45 @@ def test_other_metrics_use_loop(metric):
     s = _compute(cfg=Config(n_sets=2, set_size=2, length=6, metric=metric))
     assert s.metric == metric
     assert s.overall_min is not None and s.overall_min <= 2
+
+
+def test_channel_violations_two_colour_hand_checked():
+    # 2colour: red = A+C, green = A+T, dark = G.
+    # Set 1 (AAAAAA, AAAACC): red 100% everywhere; green 100% (pos 1-4), 50% (pos 5-6).
+    # Set 2 (CCCCCC, GAATTC): pos 1 C/G red 50 green 0 dark 50 (<= 50 OK);
+    #   pos 2-3 C/A red 100 green 50; pos 4-5 C/T red 50 green 50; pos 6 C/C green 0.
+    assert _compute().channel_violations == [
+        [],
+        ["position 1: green 0% < 25%", "position 6: green 0% < 25%"],
+    ]
+
+
+def test_channel_violations_four_colour_hand_checked():
+    # 4colour: red = A+C, green = G+T.
+    # Set 1: only A and C, so green 0% at all six positions.
+    # Set 2: pos 1 C/G and pos 4-5 C/T are 50/50; pos 2-3 C/A and pos 6 C/C have green 0%.
+    s = _compute(cfg=Config(n_sets=2, set_size=2, length=6, chemistry="4colour"))
+    assert s.channel_violations == [
+        [f"position {p}: green 0% < 25%" for p in range(1, 7)],
+        [f"position {p}: green 0% < 25%" for p in (2, 3, 6)],
+    ]
+
+
+def test_no_channel_checks_without_chemistry():
+    s = _compute(cfg=Config(n_sets=2, set_size=2, length=6, chemistry=None))
+    assert s.channel_violations == [[], []]
+
+
+def test_long_barcodes_skip_primer3_structure_stats():
+    # primer3 cannot align > 60 nt, so hairpin/homodimer dG are not reported.
+    cfg = Config(
+        n_sets=1,
+        set_size=2,
+        length=70,
+        min_hairpin_dg=None,
+        min_homodimer_dg=None,
+        chemistry=None,
+    )
+    s = _compute(sets=[["ACGT" * 17 + "AC", "TGCA" * 17 + "TG"]], cfg=cfg)
+    assert s.worst_hairpin_dg is None and s.worst_homodimer_dg is None
+    assert s.tm_min > 0

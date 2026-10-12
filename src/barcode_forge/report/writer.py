@@ -40,6 +40,19 @@ def _composition(set_no: str, composition: list[dict[str, float]], imbalance: fl
     return [f"set {set_no} (imbalance {imbalance:.4f})", header, *rows]
 
 
+def _chemistry(chemistry: str | None, violations: list[list[str]], width: int) -> list[str]:
+    if chemistry is None:
+        return ["chemistry = none (channel balance not checked)"]
+    rows = [f"chemistry = {chemistry}"]
+    for i, problems in enumerate(violations, 1):
+        if problems:
+            noun = "violation" if len(problems) == 1 else "violations"
+            rows += [f"set {i:0{width}d}: {len(problems)} {noun}", *(f"  {p}" for p in problems)]
+        else:
+            rows.append(f"set {i:0{width}d}: OK")
+    return rows
+
+
 def format_stats(stats: Stats, cfg: Config) -> str:
     """Deterministic plain-text report: parameters to reproduce the run, then results."""
     params = dataclasses.asdict(cfg) | {"seed": stats.seed}
@@ -69,8 +82,8 @@ def format_stats(stats: Stats, cfg: Config) -> str:
         "Thermodynamics",
         [
             f"Tm = {stats.tm_min:.1f} to {stats.tm_max:.1f} C",
-            f"worst hairpin dG = {stats.worst_hairpin_dg:.2f} kcal/mol",
-            f"worst homodimer dG = {stats.worst_homodimer_dg:.2f} kcal/mol",
+            f"worst hairpin dG = {_fmt(stats.worst_hairpin_dg, '.2f')} kcal/mol",
+            f"worst homodimer dG = {_fmt(stats.worst_homodimer_dg, '.2f')} kcal/mol",
         ],
     )
     rejected = [f"{name} = {n}" for name, n in stats.rejections.items()] or ["none"]
@@ -78,6 +91,9 @@ def format_stats(stats: Stats, cfg: Config) -> str:
         "Rule rejections", [f"candidates screened = {stats.candidates_screened}", *rejected]
     )
     width = _width(stats.n_sets)
+    lines += _section(
+        "Sequencing chemistry", _chemistry(cfg.chemistry, stats.channel_violations, width)
+    )
     composition = []
     for i, (comp, imb) in enumerate(zip(stats.composition, stats.imbalance, strict=True), 1):
         composition += _composition(f"{i:0{width}d}", comp, imb)

@@ -51,7 +51,13 @@ def test_format_stats_header_and_parameters():
 
 def test_format_stats_sections_and_values():
     text = writer.format_stats(_stats(), CFG)
-    for section in ("Distances", "Sequence properties", "Thermodynamics", "Rule rejections"):
+    for section in (
+        "Distances",
+        "Sequence properties",
+        "Thermodynamics",
+        "Rule rejections",
+        "Sequencing chemistry",
+    ):
         assert section in text
     assert "gc = 5" in text
     assert "set 01" in text and "set 02" in text
@@ -74,3 +80,31 @@ def test_format_stats_shows_none_for_single_set():
 def test_write_stats(tmp_path):
     path = writer.write_stats(tmp_path / "stats.txt", _stats(), CFG)
     assert path.read_text() == writer.format_stats(_stats(), CFG)
+
+
+def test_format_stats_reports_channel_balance_per_set():
+    # Hand-checked in tests/report/test_stats.py: set 01 OK, set 02 green 0% at pos 1 and 6.
+    text = writer.format_stats(_stats(), CFG)
+    section = text.split("Sequencing chemistry")[1].split("\n\n")[0]
+    assert "chemistry = 2colour" in section
+    assert "set 01: OK" in section
+    assert "set 02: 2 violations" in section
+    assert "  position 1: green 0% < 25%" in section
+    assert "  position 6: green 0% < 25%" in section
+
+
+def test_format_stats_without_chemistry_says_not_checked():
+    cfg = Config(n_sets=2, set_size=2, length=6, chemistry=None)
+    s = stats.compute(SETS, cfg, min_distance=2, rejections={}, candidates_screened=4, seed=0)
+    text = writer.format_stats(s, cfg)
+    assert "chemistry = none (channel balance not checked)" in text
+    assert "set 01: OK" not in text
+
+
+def test_format_stats_long_barcodes_show_na_for_structure():
+    cfg = Config(n_sets=1, set_size=1, length=70, min_hairpin_dg=None, min_homodimer_dg=None)
+    s = stats.compute(
+        [["ACGT" * 17 + "AC"]], cfg, min_distance=1, rejections={}, candidates_screened=1, seed=0
+    )
+    text = writer.format_stats(s, cfg)
+    assert "worst hairpin dG = n/a" in text and "worst homodimer dG = n/a" in text
