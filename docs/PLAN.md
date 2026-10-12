@@ -103,3 +103,13 @@ Conventions: small pure functions, type hints everywhere, no I/O outside `report
 - BK-tree or indexing for pools of 10k+ barcodes (O(N²) checks are fine up to a few thousand).
 - Illumina i7/i5 presets and Nanopore presets.
 - Pushing to a GitHub remote (this happens only if you ask).
+
+## Changes made during implementation (after code and biology review)
+- Default metric is now **seqlev** rather than levenshtein: the Levenshtein correction guarantee does not hold for inline reads. `design/index.py` makes it C-fast with prefix scans.
+- The **Tm rule is opt-in**, because an embedded barcode never anneals alone. **GC bounds round to whole bases.**
+- Added **sequencing chemistry**:
+  - 2-colour by default, with a dark-start rule, poly-G as a reserved phantom barcode, and per-set channel-balance validation plus repair from spare candidates.
+  - Optional reverse-complement separation (`--revcomp`).
+- The context hairpin baseline uses the least-structured homopolymer spacer.
+- Build backend is `uv_build`, not hatchling.
+- Deferred: primer heterodimer checks; codon/frame rules for translated regions.

@@ -33,12 +33,17 @@ uv run barcode-forge --help
 | `distance/__init__.py` | `get_metric(name) -> Metric` for `hamming`, `levenshtein`, `seqlev` |
 | `rules/<rule>.py` | Each module exports `RULE = Rule(name, cost, check)` where `check(seq, cfg) -> bool` and True means the sequence passes. Each rule also exports its own measurement function (e.g. `longest_homopolymer`) for reuse by stats. |
 | `rules/ruleset.py` | `Rule` dataclass; `RuleSet(rules, cfg)` runs rules cheapest-first, `.passes(seq)`, `.rejections: Counter[str]` |
-| `design/` | `candidates` → `pool` (greedy, all pairs ≥ d) → `search` (maximise d) → `partition` → `balance`; `pipeline.run(cfg)` orchestrates them |
+| `config.py` | Frozen `Config`; `from_layers(*dicts, disable=...)` merges defaults < TOML < CLI in one validation; `without(*rules)` |
+| `design/` | `candidates` → `pool` (greedy, all pairs ≥ d, `reserved`, `revcomp`) → `search` (maximise d) → `partition` → `balance` → `repair` (channel balance from spares); `pipeline.run(cfg) -> Design` orchestrates them |
+| `design/index.py` | `CloseIndex(metric, d)`: `add`, `has_close`. Picks a C path per metric (rapidfuzz, Hamming with `pad=False`, seqlev prefix scans). Add new metrics here. |
+| `design/channels.py` | `channel_signal`, `channel_violations` per set for `2colour` / `4colour` |
 | `report/` | `stats.compute(...)` is pure; `writer` writes `set_NN.tsv` (one column, no header) and `stats.txt` |
 
 ## Biological invariants (tests must enforce)
 - Every barcode in the output, across **all** sets, is unique and pairwise ≥ the reported min distance under the chosen metric.
 - Every barcode passes every enabled rule, including rules evaluated in flank context.
 - Defaults are GC 40–60%, homopolymer ≤ 2, hairpin ΔG > −3 and homodimer ΔG > −6 kcal/mol (primer3; 50 mM Na⁺, 1.5 mM Mg²⁺, 0.2 mM dNTP), Tm window opt-in (`tm_tolerance`).
-- The distance metric must model indels (Levenshtein or Sequence-Levenshtein) for inline barcodes; Hamming is for fixed-position indexes only.
+- The default metric is `seqlev`, because indels shift inline barcodes. Levenshtein is the alternative; Hamming is for fixed-position indexes only.
+- On 2-colour chemistry (the default): no leading GG, every barcode ≥ d from poly-G, and every set channel-balanced at every position. Otherwise the design raises.
+- Seqlev is not a metric (the triangle inequality fails), so never rely on metric-space indexing (e.g. BK-trees).
 - If a design is infeasible, fail loudly with an actionable message. Never silently return fewer barcodes.
