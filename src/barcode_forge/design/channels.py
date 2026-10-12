@@ -10,7 +10,7 @@ signal in every imaging channel for cluster registration and base calling
   the green laser.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from barcode_forge.composition import positional_composition
 
@@ -19,6 +19,8 @@ CHANNELS = {
     "2colour": {"red": "AC", "green": "AT"},
     "4colour": {"red": "AC", "green": "GT"},
 }
+MIN_SIGNAL = 0.25  # least fraction of barcodes lighting each channel per cycle
+MAX_DARK = 0.5  # most fraction of barcodes dark (G) per cycle on 2-colour
 _EPS = 1e-9  # summed fractions such as 1/15 + 5/15 fall just below 0.4 as floats
 
 
@@ -26,20 +28,22 @@ def channel_signal(seqs: Sequence[str], chemistry: str) -> list[dict[str, float]
     """Fraction of barcodes lighting each channel at each position (plus "dark" on 2-colour)."""
     if chemistry not in CHANNELS:
         raise ValueError(f"chemistry must be one of {tuple(CHANNELS)}")
-    signal = []
-    for comp in positional_composition(seqs):
-        pos = {ch: sum(comp[b] for b in bases) for ch, bases in CHANNELS[chemistry].items()}
-        if chemistry == "2colour":
-            pos["dark"] = comp["G"]
-        signal.append(pos)
-    return signal
+    return [position_signal(comp, chemistry) for comp in positional_composition(seqs)]
+
+
+def position_signal(comp: Mapping[str, float], chemistry: str) -> dict[str, float]:
+    """Channel fractions at one position from its base fractions (as in ``channel_signal``)."""
+    pos = {ch: sum(comp[b] for b in bases) for ch, bases in CHANNELS[chemistry].items()}
+    if chemistry == "2colour":
+        pos["dark"] = comp["G"]
+    return pos
 
 
 def channel_violations(
     seqs: Sequence[str],
     chemistry: str | None,
-    min_signal: float = 0.25,
-    max_dark: float = 0.5,
+    min_signal: float = MIN_SIGNAL,
+    max_dark: float = MAX_DARK,
 ) -> list[str]:
     """Human-readable channel-balance problems; empty if balanced or chemistry is None."""
     if chemistry is None:

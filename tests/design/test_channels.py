@@ -1,6 +1,6 @@
 import pytest
 
-from barcode_forge.design.channels import channel_signal, channel_violations
+from barcode_forge.design.channels import channel_signal, channel_violations, position_signal
 
 BALANCED = ["ACGT", "CATG", "GTAC", "TGCA"]  # each position has one of each base
 
@@ -72,3 +72,11 @@ def test_threshold_is_inclusive_despite_float_rounding():
     seqs = ["AAAA"] + ["CCCC"] * 5 + ["GGGG"] * 9
     problems = channel_violations(seqs, "2colour", min_signal=0.4, max_dark=0.6)
     assert problems == [f"position {p}: green 7% < 40%" for p in range(1, 5)]
+
+
+@pytest.mark.parametrize("chemistry", ["2colour", "4colour"])
+def test_position_signal_matches_channel_signal(chemistry):
+    seqs = ["ACGT", "CATG", "GGAC", "TGCA", "AAGT"]
+    comps = [{b: sum(s[p] == b for s in seqs) / 5 for b in "ACGT"} for p in range(4)]
+    expected = channel_signal(seqs, chemistry)
+    assert [position_signal(c, chemistry) for c in comps] == expected
