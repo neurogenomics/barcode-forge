@@ -86,3 +86,9 @@ def test_without_disables_rule(rule, field):
 def test_without_unknown_rule_raises():
     with pytest.raises(ValueError, match="gc"):
         Config().without("gc")
+
+
+def test_load_toml_accepts_disable_list(tmp_path):
+    path = tmp_path / "cfg.toml"
+    path.write_text('disable = ["tm", "hairpin"]\n')
+    assert load_toml(path) == {"disable": ("tm", "hairpin")}

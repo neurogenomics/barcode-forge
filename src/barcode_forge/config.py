@@ -102,9 +102,13 @@ class Config:
 
 
 def load_toml(path: Path) -> dict[str, Any]:
-    """Read config overrides from a TOML file, rejecting unknown keys."""
+    """Read config overrides from a TOML file, rejecting unknown keys.
+
+    Besides Config fields, ``disable = [...]`` lists rules to switch off
+    (TOML has no null); apply it with ``Config.without``.
+    """
     data = tomllib.loads(Path(path).read_text())
-    known = {f.name for f in dataclasses.fields(Config)}
+    known = {f.name for f in dataclasses.fields(Config)} | {"disable"}
     unknown = sorted(set(data) - known)
     if unknown:
         raise ValueError(f"unknown config keys: {', '.join(unknown)}")
