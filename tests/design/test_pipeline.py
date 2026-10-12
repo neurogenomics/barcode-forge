@@ -38,8 +38,12 @@ def test_every_barcode_passes_every_rule_with_resolved_config(design):
     assert all(rs.passes(b) for s in design.sets for b in s)
 
 
-def test_tm_target_is_resolved(design):
-    assert design.cfg.tm_target is not None
+def test_tm_target_is_resolved_when_tm_rule_enabled():
+    assert run(SMALL.with_overrides(tm_tolerance=5.0)).cfg.tm_target is not None
+
+
+def test_tm_target_left_unset_when_tm_rule_disabled(design):
+    assert design.cfg.tm_target is None
 
 
 def test_maximise_reaches_at_least_fixed_distance():

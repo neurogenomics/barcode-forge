@@ -47,7 +47,9 @@ class Config:
     # Thermodynamics (primer3; kcal/mol, °C, mM / nM)
     min_hairpin_dg: float | None = -3.0
     min_homodimer_dg: float | None = -6.0
-    tm_tolerance: float | None = 5.0  # ± around tm_target
+    # Opt-in (e.g. when the barcode itself primes): an embedded barcode never anneals
+    # alone, so its Tm is not a PCR criterion; GC already evens amplification.
+    tm_tolerance: float | None = None  # ± °C around tm_target
     tm_target: float | None = None  # None: estimated from candidates
     mv_conc: float = 50.0
     dv_conc: float = 1.5

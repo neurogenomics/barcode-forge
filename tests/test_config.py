@@ -13,6 +13,12 @@ def test_defaults_follow_inline_barcode_guidelines():
     assert cfg.metric == "levenshtein"
 
 
+def test_tm_rule_is_opt_in():
+    # An embedded barcode never anneals alone (primers bind the constant flanks),
+    # so the Tm of the free 8-12-mer is not a PCR criterion; GC evens amplification.
+    assert Config().tm_tolerance is None
+
+
 def test_config_is_immutable():
     with pytest.raises(dataclasses.FrozenInstanceError):
         Config().length = 5  # type: ignore[misc]

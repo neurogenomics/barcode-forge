@@ -39,6 +39,6 @@ uv run barcode-forge --help
 ## Biological invariants (tests must enforce)
 - Every barcode in the output, across **all** sets, is unique and pairwise ≥ the reported min distance under the chosen metric.
 - Every barcode passes every enabled rule, including rules evaluated in flank context.
-- Defaults are GC 40–60%, homopolymer ≤ 2, hairpin ΔG > −3 and homodimer ΔG > −6 kcal/mol (primer3; 50 mM Na⁺, 1.5 mM Mg²⁺, 0.2 mM dNTP), and Tm within ±5 °C of target.
+- Defaults are GC 40–60%, homopolymer ≤ 2, hairpin ΔG > −3 and homodimer ΔG > −6 kcal/mol (primer3; 50 mM Na⁺, 1.5 mM Mg²⁺, 0.2 mM dNTP), Tm window opt-in (`tm_tolerance`).
 - The distance metric must model indels (Levenshtein or Sequence-Levenshtein) for inline barcodes; Hamming is for fixed-position indexes only.
 - If a design is infeasible, fail loudly with an actionable message. Never silently return fewer barcodes.
