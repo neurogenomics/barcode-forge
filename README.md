@@ -1,5 +1,7 @@
 # barcode-forge
 
+[![CI](https://github.com/neurogenomics/barcode-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/neurogenomics/barcode-forge/actions/workflows/ci.yml)
+
 Design **N sets of inline / cell DNA barcodes** for short-read sequencing.
 
 - All barcodes are unique across **all** sets, and every pair (within and across sets) is at least `d` edits apart, so sets can be pooled in one run.
