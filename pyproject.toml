@@ -1,0 +1,44 @@
+[project]
+name = "barcode-forge"
+version = "0.1.0"
+description = "Design sets of PCR-friendly, edit-distance-separated DNA barcodes for sequencing."
+readme = "README.md"
+authors = [
+    { name = "HDash", email = "16350928+HDash@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "primer3-py>=2.3.1",
+    "rapidfuzz>=3.14.6",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+barcode-forge = "barcode_forge.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.169.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["barcode_forge"]
+branch = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
