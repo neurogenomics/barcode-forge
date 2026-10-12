@@ -14,6 +14,16 @@ from barcode_forge.sequence import validate
 
 METRICS = ("hamming", "levenshtein", "seqlev")
 
+# Rules that can be switched off, and the parameter that controls each.
+DISABLEABLE = {
+    "homopolymer": "max_homopolymer",
+    "repeats": "max_dinucleotide_repeat",
+    "palindrome": "max_palindrome",
+    "hairpin": "min_hairpin_dg",
+    "homodimer": "min_homodimer_dg",
+    "tm": "tm_tolerance",
+}
+
 
 @dataclass(frozen=True)
 class Config:
@@ -82,6 +92,13 @@ class Config:
     def with_overrides(self, **overrides: Any) -> "Config":
         """Return a copy with every non-None override applied."""
         return dataclasses.replace(self, **{k: v for k, v in overrides.items() if v is not None})
+
+    def without(self, *rules: str) -> "Config":
+        """Return a copy with the named rules disabled."""
+        unknown = sorted(set(rules) - set(DISABLEABLE))
+        if unknown:
+            raise ValueError(f"cannot disable {unknown}; choose from {sorted(DISABLEABLE)}")
+        return dataclasses.replace(self, **{DISABLEABLE[r]: None for r in rules})
 
 
 def load_toml(path: Path) -> dict[str, Any]:

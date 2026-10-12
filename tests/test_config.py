@@ -66,3 +66,23 @@ def test_load_toml_rejects_unknown_keys(tmp_path):
     path.write_text("colour = 'blue'\n")
     with pytest.raises(ValueError, match="colour"):
         load_toml(path)
+
+
+@pytest.mark.parametrize(
+    ("rule", "field"),
+    [
+        ("homopolymer", "max_homopolymer"),
+        ("repeats", "max_dinucleotide_repeat"),
+        ("palindrome", "max_palindrome"),
+        ("hairpin", "min_hairpin_dg"),
+        ("homodimer", "min_homodimer_dg"),
+        ("tm", "tm_tolerance"),
+    ],
+)
+def test_without_disables_rule(rule, field):
+    assert getattr(Config().without(rule), field) is None
+
+
+def test_without_unknown_rule_raises():
+    with pytest.raises(ValueError, match="gc"):
+        Config().without("gc")
