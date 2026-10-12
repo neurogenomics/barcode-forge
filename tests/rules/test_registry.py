@@ -15,6 +15,7 @@ def test_registry_contains_every_rule_once():
             "hairpin",
             "homodimer",
             "context",
+            "dark_start",
         ]
     )
 

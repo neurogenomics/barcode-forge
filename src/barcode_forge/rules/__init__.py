@@ -6,7 +6,16 @@
 from collections.abc import Collection
 
 from barcode_forge.config import Config
-from barcode_forge.rules import context, gc, homopolymer, motifs, palindrome, repeats, thermo
+from barcode_forge.rules import (
+    context,
+    dark_start,
+    gc,
+    homopolymer,
+    motifs,
+    palindrome,
+    repeats,
+    thermo,
+)
 from barcode_forge.rules.ruleset import Rule, RuleSet
 
 ALL_RULES: tuple[Rule, ...] = (
@@ -15,6 +24,7 @@ ALL_RULES: tuple[Rule, ...] = (
     repeats.RULE,
     palindrome.RULE,
     motifs.RULE,
+    dark_start.RULE,
     *thermo.RULES,
     context.CONTEXT_RULE,
 )
