@@ -10,7 +10,9 @@ barcode for problems that involve at least one barcode base:
     restriction site formed across a junction;
 (c) a hairpin in the local window (barcode plus up to 20 nt of each flank)
     below ``min_hairpin_dg`` *and* more than ``HAIRPIN_MARGIN`` more stable
-    than the same window with the barcode replaced by an inert poly-T spacer.
+    than the same window with the barcode replaced by an inert spacer (the
+    least-structured of poly-A/C/G/T, since any one homopolymer can pair with
+    a flank rich in its complement).
     The baseline captures structure the flanks form by themselves or with each
     other (e.g. the complementary ends of Illumina TruSeq adapters), which no
     barcode choice can fix; the margin absorbs barcode-dependent loop and
@@ -27,7 +29,7 @@ from functools import cache
 from barcode_forge.config import Config
 from barcode_forge.rules.ruleset import Rule
 from barcode_forge.rules.thermo import hairpin_dg
-from barcode_forge.sequence import reverse_complement
+from barcode_forge.sequence import DNA, reverse_complement
 
 FLANK_WINDOW = 20  # nt of each flank included in the hairpin window
 MAX_THERMO_LEN = 60  # primer3's thermodynamic alignment limit
@@ -75,9 +77,10 @@ def _motif_overlaps_barcode(seq: str, cfg: Config) -> bool:
 
 @cache  # the baseline depends only on the flanks and barcode length
 def baseline_hairpin_dg(length: int, cfg: Config) -> float:
-    """Hairpin ΔG of the window with a poly-T spacer in place of the barcode."""
-    window, _, _ = local_window("T" * length, cfg.flank5, cfg.flank3)
-    return hairpin_dg(window, cfg)
+    """Hairpin ΔG of the window with the least-structured homopolymer spacer in place."""
+    return max(
+        hairpin_dg(local_window(base * length, cfg.flank5, cfg.flank3)[0], cfg) for base in DNA
+    )
 
 
 def _barcode_creates_hairpin(seq: str, cfg: Config) -> bool:

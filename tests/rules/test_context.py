@@ -122,3 +122,13 @@ def test_window_stays_within_primer3_limit(length):
     window, start, end = context.local_window(seq, flank, flank)
     assert len(window) <= 60
     assert window[start:end] == seq
+
+
+def test_poly_a_flank_does_not_inflate_the_baseline():
+    # Regression: a poly-T spacer pairs with an A-rich flank, making the baseline
+    # strongly negative and letting real barcode/flank hairpins through.
+    cfg = Config(flank5="GATCTACAC", flank3="A" * 20 + "CGTAC")
+    assert context.baseline_hairpin_dg(10, cfg) > -1.0
+    window, _, _ = context.local_window("GGACGTGTAG", cfg.flank5, cfg.flank3)
+    assert context.hairpin_dg(window, cfg) < cfg.min_hairpin_dg
+    assert not context.CONTEXT_RULE.check("GGACGTGTAG", cfg)
