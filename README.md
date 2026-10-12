@@ -86,3 +86,7 @@ See [AGENTS.md](AGENTS.md) for conventions and [docs/PLAN.md](docs/PLAN.md) for 
 uv run pytest -q --cov
 uv run ruff check . && uv run ruff format --check .
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).

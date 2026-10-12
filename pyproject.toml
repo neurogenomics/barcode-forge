@@ -3,6 +3,8 @@ name = "barcode-forge"
 version = "0.1.0"
 description = "Design sets of PCR-friendly, edit-distance-separated DNA barcodes for sequencing."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "HDash", email = "16350928+HDash@users.noreply.github.com" }
 ]
