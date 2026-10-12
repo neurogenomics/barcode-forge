@@ -50,7 +50,7 @@ def generate(
         typer.Option("--min-distance", "-d", help="Minimum distance [default: maximise]."),
     ] = None,
     metric: Annotated[
-        str | None, typer.Option(help="hamming | levenshtein | seqlev [default: levenshtein].")
+        str | None, typer.Option(help="hamming | levenshtein | seqlev [default: seqlev].")
     ] = None,
     gc_min: Annotated[float | None, typer.Option(help="Minimum GC fraction.")] = None,
     gc_max: Annotated[float | None, typer.Option(help="Maximum GC fraction.")] = None,

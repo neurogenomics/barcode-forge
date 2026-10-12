@@ -13,7 +13,7 @@ from barcode_forge.rules.thermo import hairpin_dg, homodimer_dg, tm
 #   cross: AAAAAA-CCCCCC 6, AAAAAA-GAATTC 4, AAAACC-CCCCCC 4, AAAACC-GAATTC 3
 SETS = [["AAAAAA", "AAAACC"], ["CCCCCC", "GAATTC"]]
 ALL = [s for group in SETS for s in group]
-CFG = Config(n_sets=2, set_size=2, length=6)
+CFG = Config(n_sets=2, set_size=2, length=6, metric="levenshtein")  # hand-computed values
 
 
 def _compute(sets=SETS, cfg=CFG, **kwargs) -> stats.Stats:

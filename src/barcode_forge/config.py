@@ -38,7 +38,7 @@ class Config:
 
     # Distance: None means maximise the minimum distance achievable
     min_distance: int | None = None
-    metric: str = "levenshtein"
+    metric: str = "seqlev"  # Sequence-Levenshtein: indels shift inline barcodes
 
     # Sequence composition rules
     gc_min: float = 0.40

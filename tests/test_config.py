@@ -10,7 +10,9 @@ def test_defaults_follow_inline_barcode_guidelines():
     assert (cfg.gc_min, cfg.gc_max) == (0.4, 0.6)
     assert cfg.max_homopolymer == 2
     assert cfg.min_distance is None  # maximise
-    assert cfg.metric == "levenshtein"
+    # Inline barcodes: an indel shifts downstream bases into the barcode window,
+    # so plain Levenshtein's correction guarantee does not hold (Buschmann 2013).
+    assert cfg.metric == "seqlev"
 
 
 def test_tm_rule_is_opt_in():
