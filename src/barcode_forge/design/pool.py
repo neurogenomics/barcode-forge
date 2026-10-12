@@ -1,12 +1,10 @@
 """Greedy selection of a pool in which every pair is at least ``d`` apart."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 
 from rapidfuzz import process
 
-# metric(a, b, *, score_cutoff=None) -> int; returns cutoff + 1 when the true
-# distance exceeds the cutoff (rapidfuzz semantics).
-Metric = Callable[..., int]
+from barcode_forge.distance import Metric
 
 
 class InfeasibleError(ValueError):

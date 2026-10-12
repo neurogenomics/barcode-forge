@@ -2,7 +2,8 @@
 
 from collections.abc import Sequence
 
-from barcode_forge.design.pool import InfeasibleError, Metric, greedy
+from barcode_forge.design.pool import InfeasibleError, greedy
+from barcode_forge.distance import Metric
 
 
 def _try(candidates: Sequence[str], target: int, d: int, metric: Metric) -> list[str] | None:
