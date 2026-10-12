@@ -9,6 +9,8 @@ from rapidfuzz.distance import Hamming, Levenshtein
 
 from barcode_forge.design.candidates import generate
 from barcode_forge.design.pool import InfeasibleError, greedy
+from barcode_forge.distance import seqlev
+from barcode_forge.sequence import reverse_complement
 
 Metric = Callable[..., int]
 
@@ -114,3 +116,52 @@ def test_invalid_arguments() -> None:
         greedy(["AAAA"], 1, 0, Hamming.distance)
     with pytest.raises(ValueError):
         greedy(["AAAA"], 0, 1, Hamming.distance)
+
+
+SEQLEV_METRICS = [*METRICS, seqlev.distance]
+
+
+@pytest.mark.parametrize("metric", SEQLEV_METRICS)
+def test_reserved_respected_and_not_returned(metric: Metric) -> None:
+    reserved = ["GGGGGGG"]
+    cands = ["GGGGGGG", "GGGGGGA", *generate(7, 2000, Random(3))]
+    pool = greedy(cands, 30, 3, metric, reserved=reserved)
+    assert len(pool) == 30
+    assert "GGGGGGG" not in pool and "GGGGGGA" not in pool
+    assert all(metric(p, r) >= 3 for p in pool for r in reserved)
+
+
+def test_reserved_makes_infeasible() -> None:
+    with pytest.raises(InfeasibleError, match="reserved"):
+        greedy(["AAAA", "GGGG"], 2, 1, Hamming.distance, reserved=["GGGG"])
+
+
+@pytest.mark.parametrize("metric", SEQLEV_METRICS)
+@settings(max_examples=10, deadline=None)
+@given(seed=st.integers(0, 2**32), d=st.integers(1, 4))
+def test_revcomp_pairs_at_least_d(metric: Metric, seed: int, d: int) -> None:
+    pool = greedy(generate(9, 3000, Random(seed)), 12, d, metric, revcomp=True)
+    assert len(pool) == 12
+    for a in pool:
+        for b in pool:
+            assert metric(a, reverse_complement(b)) >= d, (a, b)
+        assert pool.count(a) == 1
+
+
+def test_revcomp_rejects_rc_and_palindromes() -> None:
+    # ACGT is its own reverse complement; AACC's is GGTT.
+    cands = ["ACGT", "AACC", "GGTT", "AAAA"]
+    assert greedy(cands, 2, 1, Hamming.distance, revcomp=True) == ["AACC", "AAAA"]
+
+
+@pytest.mark.parametrize("metric", SEQLEV_METRICS)
+def test_defaults_unchanged(metric: Metric) -> None:
+    cands = generate(7, 1500, Random(4))
+    assert greedy(cands, 25, 3, metric) == greedy(cands, 25, 3, metric, reserved=(), revcomp=False)
+    expected: list[str] = []
+    for c in cands:
+        if all(metric(c, b) >= 3 for b in expected):
+            expected.append(c)
+        if len(expected) == 25:
+            break
+    assert greedy(cands, 25, 3, metric) == expected
