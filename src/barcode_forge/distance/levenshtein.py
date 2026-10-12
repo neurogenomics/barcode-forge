@@ -1,8 +1,9 @@
-"""Levenshtein (edit) distance with unit costs for substitution, insertion and deletion."""
+"""Levenshtein (edit) distance with unit costs for substitution, insertion and deletion.
 
-from rapidfuzz.distance import Levenshtein
+``distance(a, b, *, score_cutoff=None)`` is rapidfuzz's C scorer itself (not a
+wrapper) so ``design.pool`` can scan whole pools with ``rapidfuzz.process``.
+"""
 
+from rapidfuzz.distance.Levenshtein import distance
 
-def distance(a: str, b: str, *, score_cutoff: int | None = None) -> int:
-    """Edit distance; returns ``score_cutoff + 1`` if it exceeds ``score_cutoff``."""
-    return Levenshtein.distance(a, b, score_cutoff=score_cutoff)
+__all__ = ["distance"]

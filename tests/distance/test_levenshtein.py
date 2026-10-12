@@ -81,3 +81,8 @@ def test_at_most_hamming(pair):
 def test_score_cutoff(a, b, cutoff):
     true = distance(a, b)
     assert distance(a, b, score_cutoff=cutoff) == (true if true <= cutoff else cutoff + 1)
+
+
+def test_is_a_rapidfuzz_scorer_so_pool_search_runs_in_c():
+    # design.pool uses rapidfuzz.process for scorers carrying this attribute.
+    assert hasattr(distance, "_RF_Scorer")
