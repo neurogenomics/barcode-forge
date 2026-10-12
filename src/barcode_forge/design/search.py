@@ -6,31 +6,41 @@ from barcode_forge.design.pool import InfeasibleError, greedy
 from barcode_forge.distance import Metric
 
 
-def _try(candidates: Sequence[str], target: int, d: int, metric: Metric) -> list[str] | None:
-    try:
-        return greedy(candidates, target, d, metric)
-    except InfeasibleError:
-        return None
-
-
 def maximise(
-    candidates: Sequence[str], target: int, metric: Metric, length: int
+    candidates: Sequence[str],
+    target: int,
+    metric: Metric,
+    length: int,
+    *,
+    reserved: Sequence[str] = (),
+    revcomp: bool = False,
 ) -> tuple[int, list[str]]:
     """Return ``(d, pool)`` for the largest d in ``[1, length]`` that greedy reaches.
 
-    Greedy feasibility is close to, but not provably, monotone in d. After the
-    binary search we keep stepping up while d + 1 also succeeds, so the result
-    is never beaten by its immediate neighbour; gaps further up are not probed.
+    Greedy feasibility is close to, but not provably, monotone in d, so this is
+    a binary search: the result's d + 1 is known to fail, but gaps further up
+    are not probed.
     """
-    best = greedy(candidates, target, 1, metric)  # raises InfeasibleError if hopeless
+    # Raises an actionable InfeasibleError if even d = 1 (uniqueness) fails.
+    pools: dict[int, list[str] | None] = {
+        1: greedy(candidates, target, 1, metric, reserved=reserved, revcomp=revcomp)
+    }
+
+    def attempt(d: int) -> list[str] | None:
+        if d not in pools:  # greedy is deterministic, so each d runs once
+            try:
+                pools[d] = greedy(candidates, target, d, metric, reserved=reserved, revcomp=revcomp)
+            except InfeasibleError:
+                pools[d] = None
+        return pools[d]
+
     lo, hi = 1, length  # lo is known feasible
     while lo < hi:
         mid = (lo + hi + 1) // 2
-        pool = _try(candidates, target, mid, metric)
-        if pool is None:
+        if attempt(mid) is None:
             hi = mid - 1
         else:
-            lo, best = mid, pool
-    while lo < length and (pool := _try(candidates, target, lo + 1, metric)) is not None:
-        lo, best = lo + 1, pool
+            lo = mid
+    best = pools[lo]
+    assert best is not None
     return lo, best
