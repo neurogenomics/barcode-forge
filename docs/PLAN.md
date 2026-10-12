@@ -1,9 +1,9 @@
 # barcode-forge — plan
 
 ## Context
-You need a small Python CLI that designs **N sets of inline/cell barcodes** for sequencing. All barcodes must be unique across sets, separated by a minimum **edit (Levenshtein) distance**. That distance is either set by the user or, by default, made as large as possible for the requested size. Barcodes must also follow wet-lab design rules: PCR-friendly GC and Tm, no long homopolymers, no hairpins or self-complementarity, and enough base diversity for the first sequencing cycles. The project is a new greenfield project at `/Users/hdash/code/barcode-forge`. It uses **uv** for env and packaging, **pytest** with test-driven development, and **git**.
+You need a small Python CLI that designs **N sets of inline/cell barcodes** for sequencing. All barcodes must be unique across sets, separated by a minimum **edit (Levenshtein) distance**. That distance is either set by the user or, by default, made as large as possible for the requested size. Barcodes must also follow wet-lab design rules: PCR-friendly GC and Tm, no long homopolymers, no hairpins or self-complementarity, and enough base diversity for the first sequencing cycles. It uses **uv** for env and packaging, **pytest** with test-driven development, and **git**.
 
-**Prerequisite:** `uv` is not installed on this machine. Step 0 installs it with `brew install uv`, or with `curl -LsSf https://astral.sh/uv/install.sh | sh` if Homebrew is unavailable. Python 3.12.9 is already present.
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) and Python ≥ 3.12.
 
 ## Framework choice
 | Concern | Choice | Why |
