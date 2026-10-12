@@ -6,6 +6,7 @@ cycles of a short-read run. Setting a rule parameter to ``None`` disables it.
 
 import dataclasses
 import tomllib
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -88,6 +89,8 @@ class Config:
             value = getattr(self, name)
             if value is not None and value < 1:
                 raise ValueError(f"{name} must be >= 1")
+        if self.chemistry == "none":  # TOML/CLI spelling of None
+            object.__setattr__(self, "chemistry", None)
         if self.chemistry is not None and self.chemistry not in CHEMISTRIES:
             raise ValueError(f"chemistry must be one of {CHEMISTRIES} or None")
         if self.max_dark_start is not None and self.max_dark_start < 0:
@@ -120,10 +123,27 @@ class Config:
 
     def without(self, *rules: str) -> "Config":
         """Return a copy with the named rules disabled."""
-        unknown = sorted(set(rules) - set(DISABLEABLE))
-        if unknown:
-            raise ValueError(f"cannot disable {unknown}; choose from {sorted(DISABLEABLE)}")
-        return dataclasses.replace(self, **{DISABLEABLE[r]: None for r in rules})
+        return dataclasses.replace(self, **_disabled(rules))
+
+
+def _disabled(rules: Iterable[str]) -> dict[str, None]:
+    rules = set(rules)
+    unknown = sorted(rules - set(DISABLEABLE))
+    if unknown:
+        raise ValueError(f"cannot disable {unknown}; choose from {sorted(DISABLEABLE)}")
+    return {DISABLEABLE[r]: None for r in rules}
+
+
+def from_layers(*layers: Mapping[str, Any], disable: Iterable[str] = ()) -> Config:
+    """Build a Config from defaults < layers (later wins; None means unset) < disabled rules.
+
+    Everything is applied before a single validation, so e.g. a long barcode
+    can be combined with disabling the primer3 rules it would otherwise fail.
+    """
+    values: dict[str, Any] = {}
+    for layer in layers:
+        values.update({k: v for k, v in layer.items() if v is not None})
+    return Config(**values | _disabled(disable))
 
 
 def load_toml(path: Path) -> dict[str, Any]:

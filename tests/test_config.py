@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from barcode_forge.config import Config, load_toml
+from barcode_forge.config import Config, from_layers, load_toml
 
 
 def test_defaults_follow_inline_barcode_guidelines():
@@ -153,3 +153,26 @@ def test_long_barcodes_allowed_without_primer3_rules():
 def test_zero_tm_tolerance_and_seed_are_valid():
     cfg = Config(tm_tolerance=0.0, seed=0)
     assert (cfg.tm_tolerance, cfg.seed) == (0.0, 0)
+
+
+def test_chemistry_none_string_means_no_checks():
+    # TOML and the CLI have no null, so "none" switches channel checks off.
+    assert Config(chemistry="none").chemistry is None
+
+
+def test_from_layers_applies_later_layers_and_disables_in_one_validation():
+    # A long barcode is only valid once the primer3 rules are off, so disabling
+    # must happen in the same step as setting the length.
+    cfg = from_layers(
+        {"length": 9},
+        {"length": 70, "set_size": None},
+        disable=("hairpin", "homodimer"),
+    )
+    assert cfg.length == 70
+    assert cfg.set_size == Config().set_size  # None in a layer means "not given"
+    assert cfg.min_hairpin_dg is None and cfg.min_homodimer_dg is None
+
+
+def test_from_layers_rejects_unknown_rule():
+    with pytest.raises(ValueError, match="gc"):
+        from_layers(disable=("gc",))
