@@ -13,6 +13,8 @@ from typing import Any
 from barcode_forge.sequence import validate
 
 METRICS = ("hamming", "levenshtein", "seqlev")
+CHEMISTRIES = ("2colour", "4colour")  # None: no imaging-channel checks
+PRIMER3_MAX_LENGTH = 60  # primer3 refuses longer sequences for hairpin/dimer alignment
 
 # Rules that can be switched off, and the parameter that controls each.
 DISABLEABLE = {
@@ -22,6 +24,7 @@ DISABLEABLE = {
     "hairpin": "min_hairpin_dg",
     "homodimer": "min_homodimer_dg",
     "tm": "tm_tolerance",
+    "dark_start": "max_dark_start",
 }
 
 
@@ -60,6 +63,11 @@ class Config:
     flank5: str = ""
     flank3: str = ""
 
+    # Sequencing: Illumina 2-colour (NextSeq/NovaSeq, G = dark) or 4-colour (MiSeq/HiSeq)
+    chemistry: str | None = "2colour"
+    max_dark_start: int | None = 1  # longest run of leading G (dark) allowed; 2-colour only
+    check_revcomp: bool = False  # non-directional libraries: also separate reverse complements
+
     # Search
     seed: int | None = None
     max_candidates: int = 50_000
@@ -80,6 +88,21 @@ class Config:
             value = getattr(self, name)
             if value is not None and value < 1:
                 raise ValueError(f"{name} must be >= 1")
+        if self.chemistry is not None and self.chemistry not in CHEMISTRIES:
+            raise ValueError(f"chemistry must be one of {CHEMISTRIES} or None")
+        if self.max_dark_start is not None and self.max_dark_start < 0:
+            raise ValueError("max_dark_start must be >= 0")
+        if self.tm_tolerance is not None and self.tm_tolerance < 0:
+            raise ValueError("tm_tolerance must be >= 0")
+        if self.seed is not None and self.seed < 0:
+            # random.Random(-n) produces the same stream as Random(n).
+            raise ValueError("seed must be >= 0")
+        thermo = (self.min_hairpin_dg, self.min_homodimer_dg, self.tm_tolerance)
+        if self.length > PRIMER3_MAX_LENGTH and any(v is not None for v in thermo):
+            raise ValueError(
+                f"primer3 cannot analyse barcodes longer than {PRIMER3_MAX_LENGTH} nt; "
+                "disable hairpin, homodimer and tm for long barcodes"
+            )
         if self.max_candidates < 1:
             raise ValueError("max_candidates must be >= 1")
         object.__setattr__(self, "avoid_motifs", tuple(validate(m) for m in self.avoid_motifs))

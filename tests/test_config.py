@@ -36,6 +36,10 @@ def test_config_is_immutable():
         {"min_distance": 11, "length": 10},
         {"metric": "euclid"},
         {"max_homopolymer": 0},
+        {"chemistry": "3colour"},
+        {"max_dark_start": -1},
+        {"tm_tolerance": -0.5},
+        {"seed": -5},  # Random(-5) gives the same stream as Random(5)
         {"avoid_motifs": ("GANTTC",)},
         {"flank5": "ACGN"},
     ],
@@ -83,6 +87,7 @@ def test_load_toml_rejects_unknown_keys(tmp_path):
         ("hairpin", "min_hairpin_dg"),
         ("homodimer", "min_homodimer_dg"),
         ("tm", "tm_tolerance"),
+        ("dark_start", "max_dark_start"),
     ],
 )
 def test_without_disables_rule(rule, field):
@@ -98,3 +103,53 @@ def test_load_toml_accepts_disable_list(tmp_path):
     path = tmp_path / "cfg.toml"
     path.write_text('disable = ["tm", "hairpin"]\n')
     assert load_toml(path) == {"disable": ("tm", "hairpin")}
+
+
+def test_sequencing_defaults_target_two_colour_sbs():
+    # NextSeq/NovaSeq 2-colour SBS is the most common platform; G is dark there,
+    # so at most one leading G by default.
+    cfg = Config()
+    assert cfg.chemistry == "2colour"
+    assert cfg.max_dark_start == 1
+    assert cfg.check_revcomp is False
+
+
+@pytest.mark.parametrize("chemistry", ["2colour", "4colour", None])
+def test_valid_chemistries(chemistry):
+    assert Config(chemistry=chemistry).chemistry == chemistry
+
+
+def test_max_dark_start_zero_forbids_any_leading_g():
+    assert Config(max_dark_start=0).max_dark_start == 0
+
+
+def test_check_revcomp_is_settable():
+    assert Config(check_revcomp=True).check_revcomp is True
+
+
+NO_PRIMER3 = {"min_hairpin_dg": None, "min_homodimer_dg": None, "tm_tolerance": None}
+
+
+@pytest.mark.parametrize(
+    "active",
+    [
+        {"min_hairpin_dg": -3.0, "min_homodimer_dg": -6.0},  # the defaults
+        {"min_hairpin_dg": -3.0},
+        {"min_homodimer_dg": -6.0},
+        {"tm_tolerance": 2.0},
+    ],
+)
+def test_long_barcodes_need_primer3_rules_off(active):
+    # primer3 refuses thermodynamic alignment of sequences over 60 nt.
+    with pytest.raises(ValueError, match="hairpin.*homodimer.*tm"):
+        Config(length=70, **(NO_PRIMER3 | active))
+
+
+def test_long_barcodes_allowed_without_primer3_rules():
+    assert Config(length=70, **NO_PRIMER3).length == 70
+    assert Config(length=60).length == 60  # primer3 limit is inclusive
+
+
+def test_zero_tm_tolerance_and_seed_are_valid():
+    cfg = Config(tm_tolerance=0.0, seed=0)
+    assert (cfg.tm_tolerance, cfg.seed) == (0.0, 0)
